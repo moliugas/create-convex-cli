@@ -231,13 +231,14 @@ rm -f "$APP_ENV_TMP"
 A_DOMAIN="api-${PROJECT_NAME}.convex.giltine.com"
 ACT_DOMAIN="actions-${PROJECT_NAME}.convex.giltine.com"
 DASH_DOMAIN="dashboard-${PROJECT_NAME}.convex.giltine.com"
-echo "Domains to create in Dokploy: $A_DOMAIN, $ACT_DOMAIN" >&2
-# Attempt domain creation for the compose service (host-only)
-api domain.create "$(jq -nc --arg cid "$COMPOSE_ID" --arg h "$A_DOMAIN" '{composeId:$cid, host:$h, domainType:"compose"}')" >/dev/null || true
-api domain.create "$(jq -nc --arg cid "$COMPOSE_ID" --arg h "$ACT_DOMAIN" '{composeId:$cid, host:$h, domainType:"compose"}')" >/dev/null || true
+echo "Domains to create in Dokploy: $A_DOMAIN:3210, $ACT_DOMAIN:3211" >&2
+# Create API domain -> port 3210 with Let's Encrypt
+api domain.create "$(jq -nc --arg cid "$COMPOSE_ID" --arg h "$A_DOMAIN" --arg ct "letsencrypt" --argjson p 3210 --argjson https true '{composeId:$cid, host:$h, port:$p, https:$https, certificateType:$ct, domainType:"compose"}')" >/dev/null || true
+# Create Actions domain -> port 3211 with Let's Encrypt
+api domain.create "$(jq -nc --arg cid "$COMPOSE_ID" --arg h "$ACT_DOMAIN" --arg ct "letsencrypt" --argjson p 3211 --argjson https true '{composeId:$cid, host:$h, port:$p, https:$https, certificateType:$ct, domainType:"compose"}')" >/dev/null || true
 if [[ "$CREATE_DASH_DOMAIN" =~ ^[Yy]$ ]]; then
-  echo "Also creating dashboard domain: $DASH_DOMAIN" >&2
-  api domain.create "$(jq -nc --arg cid "$COMPOSE_ID" --arg h "$DASH_DOMAIN" '{composeId:$cid, host:$h, domainType:"compose"}')" >/dev/null || true
+  echo "Also creating dashboard domain: $DASH_DOMAIN:6791" >&2
+  api domain.create "$(jq -nc --arg cid "$COMPOSE_ID" --arg h "$DASH_DOMAIN" --arg ct "letsencrypt" --argjson p 6791 --argjson https true '{composeId:$cid, host:$h, port:$p, https:$https, certificateType:$ct, domainType:"compose"}')" >/dev/null || true
 fi
 
 # === 9) deploy app (prompt user) ===
