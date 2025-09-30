@@ -20,8 +20,15 @@ SOURCE_SCRIPT="${SOURCE_SCRIPT:-$SCRIPT_DIR/dokploy_bootstrap_script_postgres.sh
 TARGET_NAME="ccc"
 
 usage() {
-  echo "Usage: ./install_ccc.sh [--global|--user|--uninstall]"
+  echo "Usage: ./install_ccc.sh [--global|--user|--uninstall|--uninstall-user|--uninstall-global]"
   echo "       SOURCE_SCRIPT=/path/to/script ./install_ccc.sh --global"
+  echo
+  echo "Flags:"
+  echo "  --global             Install for all users to /usr/local/bin/ccc"
+  echo "  --user               Install for current user to ~/.local/bin/ccc (default)"
+  echo "  --uninstall          Uninstall from current user by default (use flags below to choose)"
+  echo "  --uninstall-user     Uninstall from ~/.local/bin/ccc"
+  echo "  --uninstall-global   Uninstall from /usr/local/bin/ccc"
 }
 
 ensure_deps() {
@@ -73,25 +80,45 @@ install_user() {
 }
 
 uninstall_cmd() {
+  local scope="${1-}"
   local removed=false
-  for path in "/usr/local/bin/$TARGET_NAME" "$HOME/.local/bin/$TARGET_NAME"; do
+  if [ "$scope" = "global" ]; then
+    local path="/usr/local/bin/$TARGET_NAME"
     if [ -e "$path" ]; then
       info "Removing $path"
-      if [ -w "$(dirname "$path")" ]; then
-        rm -f "$path"
-      else
-        sudo rm -f "$path"
-      fi
+      sudo rm -f "$path"
       removed=true
     fi
-  done
+  elif [ "$scope" = "user" ]; then
+    local path="$HOME/.local/bin/$TARGET_NAME"
+    if [ -e "$path" ]; then
+      info "Removing $path"
+      rm -f "$path"
+      removed=true
+    fi
+  else
+    # legacy: remove both if no scope provided
+    for path in "/usr/local/bin/$TARGET_NAME" "$HOME/.local/bin/$TARGET_NAME"; do
+      if [ -e "$path" ]; then
+        info "Removing $path"
+        if [ -w "$(dirname "$path")" ]; then
+          rm -f "$path"
+        else
+          sudo rm -f "$path"
+        fi
+        removed=true
+      fi
+    done
+  fi
   if $removed; then success "Uninstalled $TARGET_NAME"; else warn "$TARGET_NAME not found"; fi
 }
 
 main() {
   case "${1-}" in
     -h|--help|help) usage; exit 0 ;;
-    --uninstall) uninstall_cmd; exit 0 ;;
+    --uninstall) info "Defaulting to current-user uninstall. Use --uninstall-global to remove system-wide."; uninstall_cmd user; exit 0 ;;
+    --uninstall-user) uninstall_cmd user; exit 0 ;;
+    --uninstall-global) uninstall_cmd global; exit 0 ;;
     --global) scope=global ;;
     --user) scope=user ;;
     *) scope="" ;;

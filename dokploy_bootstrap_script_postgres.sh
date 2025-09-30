@@ -324,5 +324,5 @@ if [[ "${CREATE_PG:-N}" =~ ^[Yy]$ ]]; then
   printf "%b\n" "Postgres:       ${BOLD}${PG_ID-}${RESET}"
   if [ -n "${POSTGRES_URL-}" ]; then printf "%b\n" "Postgres URL:   ${BOLD}${POSTGRES_URL}${RESET}"; fi
 fi
-printf "%b\n" "Dokploy URL:    ${BOLD}https://dokploy.giltine.com/dashboard/projects/${PROJECT_ID}${RESET}"
+printf "%b\n" "Dokploy URL:    ${BOLD}https://dokploy.giltine.com/dashboard/project/${PROJECT_ID}/environment/${ENV_ID}${RESET}"
 success "Done."
