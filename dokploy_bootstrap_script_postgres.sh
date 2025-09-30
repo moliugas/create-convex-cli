@@ -86,7 +86,7 @@ echo "composeId=$COMPOSE_ID"
 # === 4) optional Postgres ===
 POSTGRES_URL=""
 if [[ "$CREATE_PG" =~ ^[Yy]$ ]]; then
-  PG_NAME="convex_self_hosted"
+  PG_NAME="convex-db"
   PG_DB="convex_self_hosted"
   PG_USER="${PG_USER:-appuser_02496}" 
   if [ -z "${PG_PASS-}" ]; then
@@ -105,7 +105,11 @@ if [[ "$CREATE_PG" =~ ^[Yy]$ ]]; then
     | jq -r '.data.postgresId // .postgresId // .data.id // .id')"
   api postgres.deploy "$(jq -nc --arg id "$PG_ID" '{postgresId:$id}')" >/dev/null
 
+  echo "Created Postgres instance with ID: $PG_ID"
+
   PG_JSON="$(get "postgres.one?postgresId=$PG_ID")"
+  echo "Postgres details: $PG_JSON" >&2
+  exit 1
   RAW_URL="$(jq -r '.data.internalConnectionUrl // .internalConnectionUrl // empty' <<<"$PG_JSON")"
   if [ -z "$RAW_URL" ]; then
     HOST="$(jq -r '.data.internalHost // .internalHost // .data.appName // .appName' <<<"$PG_JSON")"
@@ -131,11 +135,6 @@ S3_STORAGE_SNAPSHOT_IMPORTS_BUCKET="convex-snapshot-imports-${PROJECT_NAME}"
 S3_STORAGE_MODULES_BUCKET="convex-modules-${PROJECT_NAME}"
 S3_STORAGE_FILES_BUCKET="convex-user-files-${PROJECT_NAME}"
 S3_STORAGE_SEARCH_BUCKET="convex-search-indexes-${PROJECT_NAME}"
-
-# static envs
-S3_ENDPOINT_URL="http://minio:9000"
-AWS_S3_FORCE_PATH_STYLE=true
-AWS_REGION="giltine"
 
 # === 7) assemble env and push ===
 APP_ENV_TMP=$(mktemp)
