@@ -88,9 +88,10 @@ POSTGRES_URL=""
 if [[ "$CREATE_PG" =~ ^[Yy]$ ]]; then
   PG_NAME="convex_self_hosted"
   PG_DB="convex_self_hosted"
-  PG_USER="${PG_USER:-appuser}"
+  PG_USER="${PG_USER:-appuser_02496}" 
   if [ -z "${PG_PASS-}" ]; then
-    read -rsp "Enter Postgres password: " PG_PASS; echo
+    PG_PASS="$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 16 || true)"
+    #echo "Generated Postgres password: $PG_PASS"
   fi
 
   PG_ID="$(api postgres.create "$(jq -n \
