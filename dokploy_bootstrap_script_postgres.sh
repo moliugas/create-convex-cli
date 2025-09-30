@@ -15,8 +15,20 @@ fi
 
 # === Helpers ===
 auth=(-H "$API_HEADER_NAME: $TOKEN" -H "Content-Type: application/json")
-api() { curl -sfS "${auth[@]}" "$DOKPLOY_URL/api/$1" -d "$2"; }
-get() { curl -sfS "${auth[@]}" "$DOKPLOY_URL/api/$1"; }
+api() {
+  if [ "${DRY_RUN-}" = "1" ]; then
+    echo "curl -sfS -H '$API_HEADER_NAME: $TOKEN' -H 'Content-Type: application/json' '$DOKPLOY_URL/api/$1' -d '$2'"
+  else
+    curl -sfS "${auth[@]}" "$DOKPLOY_URL/api/$1" -d "$2"
+  fi
+}
+get() {
+  if [ "${DRY_RUN-}" = "1" ]; then
+    echo "curl -sfS -H '$API_HEADER_NAME: $TOKEN' -H 'Content-Type: application/json' '$DOKPLOY_URL/api/$1'"
+  else
+    curl -sfS "${auth[@]}" "$DOKPLOY_URL/api/$1"
+  fi
+}
 
 jqcheck() { command -v jq >/dev/null 2>&1 || { echo "jq is required" >&2; exit 1; }; }
 filecheck() { [ -f "$1" ] || { echo "missing file: $1" >&2; exit 1; }; }
@@ -39,6 +51,9 @@ if [ -z "${APP_NAME}" ]; then
   read -rp "Enter Convex app name: " APP_NAME
 fi
 
+# Default environment name
+ENV_NAME="${ENV_NAME:-dev}"
+
 # Ask whether to create Postgres
 CREATE_PG="${CREATE_PG-}"
 if [ -z "${CREATE_PG}" ]; then
@@ -46,28 +61,27 @@ if [ -z "${CREATE_PG}" ]; then
 fi
 CREATE_PG=${CREATE_PG:-N}
 
-# === 2) create project ===
-PROJECT_ID="$(api project.create "$(jq -nc --arg n "$PROJECT_NAME" '{name:$n,description:null}')" | jq -r '.data.id // .id')"
+# === 2) create project and capture environment ===
+PROJECT_CREATE_JSON="$(api project.create "$(jq -nc --arg n "$PROJECT_NAME" --arg env "$ENV_NAME" '{name:$n,description:null,env:$env}')")"
+PROJECT_ID="$(jq -r '.data.project.projectId // .project.projectId // .data.projectId // .projectId' <<<"$PROJECT_CREATE_JSON")"
+ENV_ID="$(jq -r '.data.environment.environmentId // .environment.environmentId // .data.environmentId // .environmentId' <<<"$PROJECT_CREATE_JSON")"
 echo "projectId=$PROJECT_ID"
+echo "environmentId=$ENV_ID"
 
-# === 3) create app ===
-APP_ID="$(api application.create "$(jq -nc --arg n "$APP_NAME" --arg pid "$PROJECT_ID" '{name:$n, appName:$n, projectId:$pid, serverId:null, description:null}')" | jq -r '.data.id // .id')"
-echo "applicationId=$APP_ID"
+# Try to set environment name to the chosen default (e.g., dev)
+api environment.update "$(jq -nc --arg id "$ENV_ID" --arg name "$ENV_NAME" '{environmentId:$id, name:$name}')" >/dev/null || true
 
-# Set build to Docker Compose or Dockerfile depending on presence of compose file
-if [ -f "$COMPOSE_FILE" ]; then
-  echo "Uploading docker-compose.yaml" >&2
-  COMPOSE_CONTENT=$(jq -Rs . < "$COMPOSE_FILE")
-  # NOTE: endpoint name may vary by Dokploy version. Using application.saveComposeContent.
-  api application.saveComposeContent "$(jq -nc --arg id "$APP_ID" --arg content "$(cat "$COMPOSE_FILE")" '{applicationId:$id, composeContent:$content}')" >/dev/null || {
-    echo "compose upload endpoint not supported; skipping compose upload" >&2
-  }
-  # Switch build type to compose if supported
-  api application.saveBuildType "$(jq -nc --arg id "$APP_ID" '{applicationId:$id, buildType:"compose"}')" >/dev/null || true
-else
-  echo "No $COMPOSE_FILE. Using Dockerfile build." >&2
-  api application.saveBuildType "$(jq -nc --arg id "$APP_ID" '{applicationId:$id, buildType:"dockerfile", dockerfile:"Dockerfile", dockerContextPath:"/"}')" >/dev/null || true
-fi
+# === 3) create compose service ===
+filecheck "$COMPOSE_FILE"
+echo "Creating Compose service from $COMPOSE_FILE" >&2
+COMPOSE_ID="$(api compose.create "$(jq -n \
+  --arg n "$APP_NAME" \
+  --arg an "$APP_NAME" \
+  --arg env "$ENV_ID" \
+  --rawfile cf "$COMPOSE_FILE" \
+  '{name:$n, appName:$an, environmentId:$env, composeType:"docker-compose", composeFile:$cf, description:""}')" \
+  | jq -r '.data.composeId // .composeId // .data.id // .id')"
+echo "composeId=$COMPOSE_ID"
 
 # === 4) optional Postgres ===
 POSTGRES_URL=""
@@ -79,7 +93,15 @@ if [[ "$CREATE_PG" =~ ^[Yy]$ ]]; then
     read -rsp "Enter Postgres password: " PG_PASS; echo
   fi
 
-  PG_ID="$(api postgres.create "$(jq -nc --arg name "$PG_NAME" --arg app "$PG_NAME" --arg db "$PG_DB" --arg user "$PG_USER" --arg pass "$PG_PASS" --arg pid "$PROJECT_ID" '{name:$name, appName:$app, databaseName:$db, databaseUser:$user, databasePassword:$pass, dockerImage:"postgres:15", projectId:$pid, description:null, serverId:null}')" | jq -r '.data.id // .id')"
+  PG_ID="$(api postgres.create "$(jq -n \
+    --arg name "$PG_NAME" \
+    --arg app "$PG_NAME" \
+    --arg db "$PG_DB" \
+    --arg user "$PG_USER" \
+    --arg pass "$PG_PASS" \
+    --arg env "$ENV_ID" \
+    '{name:$name, appName:$app, databaseName:$db, databaseUser:$user, databasePassword:$pass, dockerImage:"postgres:15", environmentId:$env, description:""}')" \
+    | jq -r '.data.postgresId // .postgresId // .data.id // .id')"
   api postgres.deploy "$(jq -nc --arg id "$PG_ID" '{postgresId:$id}')" >/dev/null
 
   PG_JSON="$(get "postgres.one?postgresId=$PG_ID")"
@@ -130,16 +152,17 @@ APP_ENV_TMP=$(mktemp)
   if [ -n "$POSTGRES_URL" ]; then echo "POSTGRES_URL=$POSTGRES_URL"; fi
 } >> "$APP_ENV_TMP"
 
-api application.saveEnvironment "$(jq -nc --arg id "$APP_ID" --rawfile env "$APP_ENV_TMP" '{applicationId:$id, env:$env, buildArgs:null}')" >/dev/null
+# Save env on the compose service
+api compose.update "$(jq -nc --arg id "$COMPOSE_ID" --rawfile env "$APP_ENV_TMP" '{composeId:$id, env:$env}')" >/dev/null
 rm -f "$APP_ENV_TMP"
 
 # === 8) domains (printed + best-effort create; endpoint may vary) ===
 A_DOMAIN="api-${PROJECT_NAME}.convex.giltine.com"
 ACT_DOMAIN="actions-${PROJECT_NAME}.convex.giltine.com"
 echo "Domains to create in Dokploy: $A_DOMAIN, $ACT_DOMAIN" >&2
-# Attempt generic domain creation if supported (may vary by version)
-api domain.create "$(jq -nc --arg pid "$PROJECT_ID" --arg aid "$APP_ID" --arg d "$A_DOMAIN" '{projectId:$pid, applicationId:$aid, domain:$d}')" >/dev/null || true
-api domain.create "$(jq -nc --arg pid "$PROJECT_ID" --arg aid "$APP_ID" --arg d "$ACT_DOMAIN" '{projectId:$pid, applicationId:$aid, domain:$d}')" >/dev/null || true
+# Attempt domain creation for the compose service (host-only)
+api domain.create "$(jq -nc --arg cid "$COMPOSE_ID" --arg h "$A_DOMAIN" '{composeId:$cid, host:$h, domainType:"compose"}')" >/dev/null || true
+api domain.create "$(jq -nc --arg cid "$COMPOSE_ID" --arg h "$ACT_DOMAIN" '{composeId:$cid, host:$h, domainType:"compose"}')" >/dev/null || true
 
 # === 9) deploy app (prompt user) ===
 DEPLOY="${DEPLOY-}"
@@ -149,8 +172,8 @@ fi
 DEPLOY=${DEPLOY:-Y}
 
 if [[ "$DEPLOY" =~ ^[Yy]$ ]]; then
-  api application.redeploy "$(jq -nc --arg id "$APP_ID" '{applicationId:$id}')" >/dev/null
-  echo "Deployment triggered."
+  api compose.redeploy "$(jq -nc --arg id "$COMPOSE_ID" '{composeId:$id}')" >/dev/null
+  echo "Compose deployment triggered."
 else
   echo "Skipping deployment."
 fi
