@@ -138,7 +138,6 @@ S3_STORAGE_SEARCH_BUCKET="convex-search-indexes-${PROJECT_NAME}"
 
 # === 7) assemble env and push ===
 APP_ENV_TMP=$(mktemp)
-[ -f "$ENV_FILE" ] && cat "$ENV_FILE" > "$APP_ENV_TMP" || true
 {
   echo "NEXT_PUBLIC_DEPLOYMENT_URL=$NEXT_PUBLIC_DEPLOYMENT_URL"
   echo "CONVEX_CLOUD_ORIGIN=$CONVEX_CLOUD_ORIGIN"
@@ -153,6 +152,7 @@ APP_ENV_TMP=$(mktemp)
   echo "S3_STORAGE_SEARCH_BUCKET=$S3_STORAGE_SEARCH_BUCKET"
   if [ -n "$POSTGRES_URL" ]; then echo "POSTGRES_URL=$POSTGRES_URL"; fi
 } >> "$APP_ENV_TMP"
+[ -f "$ENV_FILE" ] && cat "$ENV_FILE" > "$APP_ENV_TMP" || true
 
 # Save env on the compose service
 api compose.update "$(jq -nc --arg id "$COMPOSE_ID" --rawfile env "$APP_ENV_TMP" '{composeId:$id, env:$env}')" >/dev/null
