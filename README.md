@@ -43,7 +43,7 @@ Environment variables
 - `PROJECT_NAME`: Name for the project (prompted if missing).
 - `APP_NAME`: Name for the compose app (prompted if missing).
 - `ENV_NAME`: Environment name (default: `dev`).
-- `COMPOSE_FILE`: Compose file (default: `docker-compose.yaml`).
+- `COMPOSE_FILE`: Compose file (default: `docker-compose.yml`).
 - `CREATE_PG`: `y/N` to create Postgres (default `N`).
 - `DEPLOY_PG_NOW`: `Y/n` to deploy Postgres now (needed to obtain connection string).
 - `CREATE_DASH_DOMAIN`: `y/N` to create a dashboard domain.
@@ -68,7 +68,7 @@ What it does
 
 Notes
 - If you answer “no” to “Deploy Postgres now?”, the connection string cannot be retrieved until deployment occurs. The script warns and skips adding it to the env until deployed.
-- If you choose not to create a dashboard domain and a `docker-compose-dashless.yaml` exists, the script will use it automatically.
+- If you choose not to create a dashboard domain and a `docker-compose-dashless.yml` exists, the script will use it automatically.
 
 Troubleshooting
 - Ensure you run `ccc` from the directory containing your compose file.

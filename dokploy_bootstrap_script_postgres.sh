@@ -27,7 +27,7 @@ usage() {
   printf "  %b\n" "PROJECT_NAME          Project name (prompted if missing)"
   printf "  %b\n" "APP_NAME              App/Compose name (prompted if missing)"
   printf "  %b\n" "ENV_NAME              Environment name (default: dev)"
-  printf "  %b\n" "COMPOSE_FILE          Compose file path (default: docker-compose.yaml)"
+  printf "  %b\n" "COMPOSE_FILE          Compose file path (default: docker-compose.yml)"
   printf "  %b\n" "CREATE_PG             y/N to create Postgres (default: N)"
   printf "  %b\n" "DEPLOY_PG_NOW         Y/n to deploy Postgres now (needed for URL)"
   printf "  %b\n" "CREATE_DASH_DOMAIN    y/N to create dashboard domain (default: N)"
@@ -56,7 +56,7 @@ esac
 DOKPLOY_URL="http://88.119.165.37:3000"   # always this
 API_HEADER_NAME="x-api-key"               # Dokploy expects this header
 ENV_FILE="${ENV_FILE:-.env}"             # your local .env
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yaml}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 
 # === Prompt for token missing ===
 TOKEN="${TOKEN-}"
@@ -134,7 +134,7 @@ CREATE_DASH_DOMAIN=${CREATE_DASH_DOMAIN:-N}
 
 # If dashboard is not desired, try to use a dashless compose template
 if [[ ! "$CREATE_DASH_DOMAIN" =~ ^[Yy]$ ]]; then
-  ALT_COMPOSE="docker-compose-dashless.yaml"
+  ALT_COMPOSE="docker-compose-dashless.yml"
   if [ -f "$ALT_COMPOSE" ]; then
     COMPOSE_FILE="$ALT_COMPOSE"
     echo "Using dashless compose file: $COMPOSE_FILE" >&2

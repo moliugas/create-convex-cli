@@ -18,6 +18,7 @@ section() { printf "\n%b\n" "${BOLD}${MAGENTA}==>${RESET} $*"; }
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 SOURCE_SCRIPT="${SOURCE_SCRIPT:-$SCRIPT_DIR/dokploy_bootstrap_script_postgres.sh}"
 TARGET_NAME="ccc"
+TEMPLATE_FILES=("docker-compose.yml" "docker-compose-dashless.yml")
 
 usage() {
   echo "Usage: ./install_ccc.sh [--global|--user|--uninstall|--uninstall-user|--uninstall-global]"
@@ -62,6 +63,24 @@ install_global() {
     install -m 0755 "$SOURCE_SCRIPT" "$target"
   fi
   success "Installed: $target"
+
+  # Copy template compose files to a shared location
+  local share_dir="/usr/local/share/$TARGET_NAME"
+  if [ "${EUID:-$(id -u)}" -ne 0 ]; then
+    sudo mkdir -p "$share_dir"
+  else
+    mkdir -p "$share_dir"
+  fi
+  for f in "${TEMPLATE_FILES[@]}"; do
+    if [ -f "$SCRIPT_DIR/$f" ]; then
+      if [ "${EUID:-$(id -u)}" -ne 0 ]; then
+        sudo install -m 0644 "$SCRIPT_DIR/$f" "$share_dir/$f"
+      else
+        install -m 0644 "$SCRIPT_DIR/$f" "$share_dir/$f"
+      fi
+    fi
+  done
+  info "Templates copied to: $share_dir"
 }
 
 install_user() {
@@ -77,6 +96,16 @@ install_user() {
     info "Run: source ~/.profile"
   fi
   success "Installed: $target"
+
+   # Copy template compose files to a user share dir
+   local share_dir="$HOME/.local/share/$TARGET_NAME"
+   mkdir -p "$share_dir"
+   for f in "${TEMPLATE_FILES[@]}"; do
+     if [ -f "$SCRIPT_DIR/$f" ]; then
+       install -m 0644 "$SCRIPT_DIR/$f" "$share_dir/$f"
+     fi
+   done
+   info "Templates copied to: $share_dir"
 }
 
 uninstall_cmd() {
@@ -142,6 +171,12 @@ main() {
 
   echo
   success "Try: $TARGET_NAME --help"
+
+  echo
+  info "Template compose files were installed to a share directory."
+  info "Copy one into your project directory and customize as needed."
+  info "Example: cp ~/.local/share/$TARGET_NAME/docker-compose.yml ./  (for user installs)"
+  info "         sudo cp /usr/local/share/$TARGET_NAME/docker-compose.yml ./  (for global installs)"
 }
 
 main "$@"
