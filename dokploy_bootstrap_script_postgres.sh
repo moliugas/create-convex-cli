@@ -7,12 +7,28 @@ API_HEADER_NAME="x-api-key"               # Dokploy expects this header
 ENV_FILE="${ENV_FILE:-.env}"             # your local .env
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yaml}"
 
-# === Prompt for required inputs if missing ===
+# === Prompt for token missing ===
 TOKEN="${TOKEN-}"
 if [ -z "${TOKEN}" ]; then
   read -rsp "Enter Dokploy API token: " TOKEN; echo
 fi
 
+# === Helpers ===
+auth=(-H "$API_HEADER_NAME: $TOKEN" -H "Content-Type: application/json")
+api() { curl -sfS "${auth[@]}" "$DOKPLOY_URL/api/$1" -d "$2"; }
+get() { curl -sfS "${auth[@]}" "$DOKPLOY_URL/api/$1"; }
+
+jqcheck() { command -v jq >/dev/null 2>&1 || { echo "jq is required" >&2; exit 1; }; }
+filecheck() { [ -f "$1" ] || { echo "missing file: $1" >&2; exit 1; }; }
+
+jqcheck
+
+# === 1) auth sanity check ===
+echo "Checking API reachability..." >&2
+get project.all >/dev/null || { echo "Auth or network failed" >&2; exit 1; }
+echo "OK" >&2
+
+# === Prompt for required inputs if missing ===
 PROJECT_NAME="${PROJECT_NAME-}"
 if [ -z "${PROJECT_NAME}" ]; then
   read -rp "Enter Project name: " PROJECT_NAME
@@ -29,21 +45,6 @@ if [ -z "${CREATE_PG}" ]; then
   read -rp "Create Postgres database? [y/N]: " CREATE_PG
 fi
 CREATE_PG=${CREATE_PG:-N}
-
-# === Helpers ===
-auth=(-H "$API_HEADER_NAME: $TOKEN" -H "Content-Type: application/json")
-api() { curl -sfS "${auth[@]}" "$DOKPLOY_URL/api/$1" -d "$2"; }
-get() { curl -sfS "${auth[@]}" "$DOKPLOY_URL/api/$1"; }
-
-jqcheck() { command -v jq >/dev/null 2>&1 || { echo "jq is required" >&2; exit 1; }; }
-filecheck() { [ -f "$1" ] || { echo "missing file: $1" >&2; exit 1; }; }
-
-jqcheck
-
-# === 1) auth sanity check ===
-echo "Checking API reachability..." >&2
-get project.all >/dev/null || { echo "Auth or network failed" >&2; exit 1; }
-echo "OK" >&2
 
 # === 2) create project ===
 PROJECT_ID="$(api project.create "$(jq -nc --arg n "$PROJECT_NAME" '{name:$n,description:null}')" | jq -r '.data.id // .id')"
