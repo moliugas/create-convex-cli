@@ -37,7 +37,7 @@ services:
       - AWS_S3_FORCE_PATH_STYLE=${AWS_S3_FORCE_PATH_STYLE:-}
       - AWS_S3_DISABLE_SSE=${AWS_S3_DISABLE_SSE:-}
       - AWS_S3_DISABLE_CHECKSUMS=${AWS_S3_DISABLE_CHECKSUMS:-}
-      - LOG_SENSITIVE_BODIES=${LOG_SENSITIVE_BODIES:-true}
+      - LOG_SENSITIVE_BODIES=${LOG_SENSITIVE_BODIES:-}
 
     healthcheck:
       test: curl -fsS http://localhost:3210/version || exit 1

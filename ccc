@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Wrapper to invoke the CCC script
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+exec "$SCRIPT_DIR/dokploy_bootstrap_script_postgres.sh" "$@"
+

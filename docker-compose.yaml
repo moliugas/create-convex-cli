@@ -1,12 +1,12 @@
 networks:
   minio-minio-jiv3cj:
-    external: true 
+    external: true
 
 services:
   backend:
     image: ghcr.io/get-convex/convex-backend:33cef775a8a6228cbacee4a09ac2c4073d62ed13
     expose:
-      - "3210"         # host->container
+      - "3210" # host->container
       - "3211"
     volumes:
       - data:/convex/data
@@ -32,13 +32,13 @@ services:
       - S3_STORAGE_SNAPSHOT_IMPORTS_BUCKET=${S3_STORAGE_SNAPSHOT_IMPORTS_BUCKET:-convex-snapshot-imports}
       - S3_STORAGE_MODULES_BUCKET=${S3_STORAGE_MODULES_BUCKET:-convex-modules}
       - S3_STORAGE_FILES_BUCKET=${S3_STORAGE_FILES_BUCKET:-convex-user-files}
-      - S3_STORAGE_SEARCH_BUCKET=${S3_STORAGE_SEARCH_BUCKET:-convex-search-indexes}      
+      - S3_STORAGE_SEARCH_BUCKET=${S3_STORAGE_SEARCH_BUCKET:-convex-search-indexes}
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-}
       - AWS_S3_FORCE_PATH_STYLE=${AWS_S3_FORCE_PATH_STYLE:-}
       - AWS_S3_DISABLE_SSE=${AWS_S3_DISABLE_SSE:-}
       - AWS_S3_DISABLE_CHECKSUMS=${AWS_S3_DISABLE_CHECKSUMS:-}
-      - LOG_SENSITIVE_BODIES=${LOG_SENSITIVE_BODIES:-true}
-      
+      - LOG_SENSITIVE_BODIES=${LOG_SENSITIVE_BODIES:-}
+
     healthcheck:
       test: curl -fsS http://localhost:3210/version || exit 1
       interval: 5s

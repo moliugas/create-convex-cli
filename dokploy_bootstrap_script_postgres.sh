@@ -17,7 +17,7 @@ section() { printf "\n%b\n" "${BOLD}${MAGENTA}==>${RESET} $*"; }
 # === Help ===
 usage() {
   section "Usage"
-  printf "%b\n" "${BOLD}./dokploy_bootstrap_script_postgres.sh${RESET} [options]"
+  printf "%b\n" "${BOLD}ccc${RESET} [options]"
   printf "\n"
   printf "%b\n" "Options:"
   printf "  %b\n" "-h, --help            Show this help and exit"
@@ -39,8 +39,8 @@ usage() {
   printf "  %b\n" "AWS_REGION            Region label (default: giltine)"
   printf "\n"
   section "Examples"
-  printf "  %b\n" "DRY_RUN=1 TOKEN=... PROJECT_NAME=myproj APP_NAME=myapp ./dokploy_bootstrap_script_postgres.sh"
-  printf "  %b\n" "CREATE_PG=Y DEPLOY_PG_NOW=Y CREATE_DASH_DOMAIN=Y TOKEN=... ./dokploy_bootstrap_script_postgres.sh"
+  printf "  %b\n" "DRY_RUN=1 TOKEN=... PROJECT_NAME=myproj APP_NAME=myapp ccc"
+  printf "  %b\n" "CREATE_PG=Y DEPLOY_PG_NOW=Y CREATE_DASH_DOMAIN=Y TOKEN=... ccc"
 }
 
 # Show help and exit
@@ -85,6 +85,9 @@ jqcheck() { command -v jq >/dev/null 2>&1 || { echo "jq is required" >&2; exit 1
 filecheck() { [ -f "$1" ] || { echo "missing file: $1" >&2; exit 1; }; }
 
 jqcheck
+
+# Welcome banner
+section "Welcome to CCC Create Convex CLI"
 
 # === 1) auth sanity check ===
 section "Auth Check"
@@ -321,4 +324,5 @@ if [[ "${CREATE_PG:-N}" =~ ^[Yy]$ ]]; then
   printf "%b\n" "Postgres:       ${BOLD}${PG_ID-}${RESET}"
   if [ -n "${POSTGRES_URL-}" ]; then printf "%b\n" "Postgres URL:   ${BOLD}${POSTGRES_URL}${RESET}"; fi
 fi
+printf "%b\n" "Dokploy URL:    ${BOLD}https://dokploy.giltine.com/dashboard/projects/${PROJECT_ID}${RESET}"
 success "Done."
