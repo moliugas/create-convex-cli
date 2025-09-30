@@ -117,7 +117,9 @@ if [[ "$CREATE_PG" =~ ^[Yy]$ ]]; then
   echo "postgresId=$PG_ID"
   echo "POSTGRES_URL=$POSTGRES_URL"
 fi
-
+echo "postgresId=$PG_ID"
+  echo "POSTGRES_URL=$POSTGRES_URL"
+  exit 0
 # === 5) derived URLs based on project name ===
 NEXT_PUBLIC_DEPLOYMENT_URL="https://api-${PROJECT_NAME}.convex.giltine.com"
 CONVEX_CLOUD_ORIGIN="$NEXT_PUBLIC_DEPLOYMENT_URL"
